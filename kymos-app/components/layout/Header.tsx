@@ -43,6 +43,7 @@ export default function Header({ className = '' }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   
   // Password change state
@@ -66,7 +67,25 @@ export default function Header({ className = '' }: HeaderProps) {
         }
       })
       .catch(console.error);
+    
+    // Cargar preferencia de modo oscuro desde localStorage
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode === 'true') {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
   }, []);
+
+  // Efecto para aplicar/quitar modo oscuro
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('darkMode', 'true');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('darkMode', 'false');
+    }
+  }, [darkMode]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -347,7 +366,13 @@ export default function Header({ className = '' }: HeaderProps) {
                 <div className="py-2">
                   <p className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Cuenta</p>
                   
-                  <button className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                  <button 
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowProfileModal(true);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                  >
                     <User size={18} className="text-gray-400" />
                     <div>
                       <p className="font-medium">Mi perfil</p>
@@ -590,6 +615,117 @@ export default function Header({ className = '' }: HeaderProps) {
               >
                 <LogOut size={16} />
                 Sí, cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Mi Perfil */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <User size={20} className="text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">Mi perfil</h3>
+                  <p className="text-xs text-gray-500">Información de tu cuenta</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {/* Avatar y nombre */}
+              <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+                <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-2xl">
+                    {user?.nombre?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'US'}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-xl font-semibold text-gray-800">{user?.nombre || 'Usuario'}</h4>
+                  <span className="inline-flex items-center gap-1 mt-1 px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full">
+                    <Shield size={14} />
+                    {user?.rol || 'Rol'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Información */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <User size={18} className="text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Nombre completo</p>
+                    <p className="text-sm font-semibold text-gray-800">{user?.nombre || 'No disponible'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                      <rect width="20" height="16" x="2" y="4" rx="2"/>
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Correo electrónico</p>
+                    <p className="text-sm font-semibold text-gray-800">{user?.email || 'No disponible'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <Building2 size={18} className="text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Empresa</p>
+                    <p className="text-sm font-semibold text-gray-800">{user?.empresa || 'No disponible'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                    <Shield size={18} className="text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Rol en el sistema</p>
+                    <p className="text-sm font-semibold text-gray-800">{user?.rol || 'No disponible'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  setShowProfileModal(false);
+                  setShowPasswordModal(true);
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Key size={16} />
+                Cambiar contraseña
               </button>
             </div>
           </div>
