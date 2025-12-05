@@ -132,5 +132,6 @@ export const menuItems: MenuItem[] = [
   },
 ];
 
-export const APP_VERSION = 'v1.0.1';
+export const APP_SUBTITLE = 'Recursos Humanos';
 export const APP_NAME = 'KyMOS';
+export const APP_DEVELOPER = 'ETL Technology';

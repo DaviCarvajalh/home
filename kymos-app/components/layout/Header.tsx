@@ -21,7 +21,9 @@ import {
   EyeOff,
   Check,
   AlertCircle,
+  Menu,
 } from 'lucide-react';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface UserData {
   nombre: string;
@@ -56,6 +58,7 @@ export default function Header({ className = '' }: HeaderProps) {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   
   const router = useRouter();
+  const { toggleMobile } = useSidebar();
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -187,19 +190,27 @@ export default function Header({ className = '' }: HeaderProps) {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
-    <header className={`bg-white border-b border-gray-200 px-6 py-3 ${className}`}>
+    <header className={`bg-white border-b border-gray-200 px-3 md:px-6 py-2 md:py-3 ${className}`}>
       <div className="flex items-center justify-between">
         {/* Left Section - Filters */}
-        <div className="flex items-center gap-6">
-          {/* Empresa Select */}
-          <div className="flex items-center gap-2">
-            <Building2 size={18} className="text-gray-400" />
+        <div className="flex items-center gap-2 md:gap-6">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={toggleMobile}
+            className="md:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 text-gray-600"
+          >
+            <Menu size={22} />
+          </button>
+          
+          {/* Empresa Select - Compacto en móvil */}
+          <div className="flex items-center gap-1 md:gap-2">
+            <Building2 size={16} className="text-gray-400 hidden md:block" />
             <div>
-              <label className="text-xs text-gray-500 block font-medium">Empresa</label>
+              <label className="text-[10px] md:text-xs text-gray-500 block font-medium">Empresa</label>
               <select
                 value={empresa}
                 onChange={(e) => setEmpresa(e.target.value)}
-                className="bg-transparent border-none text-sm font-semibold text-gray-800 focus:outline-none focus:ring-0 cursor-pointer pr-6 -ml-1"
+                className="bg-transparent border-none text-xs md:text-sm font-semibold text-gray-800 focus:outline-none focus:ring-0 cursor-pointer pr-4 md:pr-6 -ml-1 max-w-[100px] md:max-w-none truncate"
               >
                 {empresas.map((emp) => (
                   <option key={emp} value={emp}>{emp}</option>
@@ -208,18 +219,18 @@ export default function Header({ className = '' }: HeaderProps) {
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="h-10 w-px bg-gray-200" />
+          {/* Divider - Solo desktop */}
+          <div className="h-8 md:h-10 w-px bg-gray-200 hidden md:block" />
 
           {/* Periodo Select */}
-          <div className="flex items-center gap-2">
-            <Calendar size={18} className="text-gray-400" />
+          <div className="flex items-center gap-1 md:gap-2">
+            <Calendar size={16} className="text-gray-400 hidden md:block" />
             <div>
-              <label className="text-xs text-gray-500 block font-medium">Periodo</label>
+              <label className="text-[10px] md:text-xs text-gray-500 block font-medium">Periodo</label>
               <select
                 value={periodo}
                 onChange={(e) => setPeriodo(e.target.value)}
-                className="bg-transparent border-none text-sm font-semibold text-gray-800 focus:outline-none focus:ring-0 cursor-pointer pr-6 -ml-1"
+                className="bg-transparent border-none text-xs md:text-sm font-semibold text-gray-800 focus:outline-none focus:ring-0 cursor-pointer pr-4 md:pr-6 -ml-1"
               >
                 {periodos.map((per) => (
                   <option key={per} value={per}>{per}</option>
@@ -228,28 +239,28 @@ export default function Header({ className = '' }: HeaderProps) {
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="h-10 w-px bg-gray-200" />
+          {/* Divider - Solo desktop */}
+          <div className="h-10 w-px bg-gray-200 hidden md:block" />
 
-          {/* Empleados Activos Toggle */}
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <Users size={18} className="text-gray-400 group-hover:text-emerald-500 transition-colors" />
-            <div className="flex items-center gap-2">
+          {/* Empleados Activos Toggle - Compacto en móvil */}
+          <label className="flex items-center gap-1 md:gap-3 cursor-pointer group">
+            <Users size={16} className="text-gray-400 group-hover:text-emerald-500 transition-colors hidden md:block" />
+            <div className="flex items-center gap-1 md:gap-2">
               <div
                 onClick={() => setSoloActivos(!soloActivos)}
                 className={`
-                  relative w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer
+                  relative w-9 md:w-11 h-5 md:h-6 rounded-full transition-colors duration-200 cursor-pointer
                   ${soloActivos ? 'bg-emerald-500' : 'bg-gray-300'}
                 `}
               >
                 <div
                   className={`
-                    absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200
-                    ${soloActivos ? 'translate-x-6' : 'translate-x-1'}
+                    absolute top-0.5 md:top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200
+                    ${soloActivos ? 'translate-x-4 md:translate-x-6' : 'translate-x-0.5 md:translate-x-1'}
                   `}
                 />
               </div>
-              <span className="text-sm text-gray-600 font-medium">Solo activos</span>
+              <span className="text-[10px] md:text-sm text-gray-600 font-medium hidden sm:inline">Solo activos</span>
             </div>
           </label>
         </div>

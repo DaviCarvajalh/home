@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCompanyConnection, sql } from '@/lib/db';
 import { cookies } from 'next/headers';
 
-// GET - Listar empleados
-export async function GET() {
+// GET - Obtener un empleado por ID
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('session');
     
@@ -15,25 +19,35 @@ export async function GET() {
     const session = JSON.parse(sessionCookie.value);
     const pool = await getCompanyConnection(session.dbName);
     
-    const result = await pool.request().query(`
-      SELECT * FROM empleados ORDER BY apellido, nombre
-    `);
+    const result = await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query(`
+        SELECT * FROM empleados WHERE id = @id
+      `);
     
     await pool.close();
     
-    return NextResponse.json({ empleados: result.recordset });
-  } catch (error) {
-    console.error('Error al obtener empleados:', error);
+    if (result.recordset.length === 0) {
+      return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
+    }
+    
+    return NextResponse.json({ empleado: result.recordset[0] });
+  } catch (error: any) {
+    console.error('Error al obtener empleado:', error);
     return NextResponse.json(
-      { error: 'Error al obtener empleados' },
+      { error: `Error al obtener el empleado: ${error.message}` },
       { status: 500 }
     );
   }
 }
 
-// POST - Crear empleado
-export async function POST(request: NextRequest) {
+// PUT - Actualizar un empleado
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('session');
     
@@ -60,33 +74,14 @@ export async function POST(request: NextRequest) {
       afp, salud, planIsapre, tramoAsignacionFamiliar,
       // Asistencia
       turno, horarioAsistencia, calendario,
+      // Estado
+      activo,
     } = body;
-
-    // Validaciones básicas
-    if (!rut || !nombres || !apellidos || !fechaIngreso) {
-      return NextResponse.json(
-        { error: 'Faltan campos obligatorios: RUT, Nombres, Apellidos y Fecha de Ingreso son requeridos' },
-        { status: 400 }
-      );
-    }
 
     const pool = await getCompanyConnection(session.dbName);
     
-    // Verificar si el RUT ya existe
-    const existingRut = await pool.request()
-      .input('rut', sql.VarChar, rut)
-      .query('SELECT id FROM empleados WHERE rut = @rut');
-    
-    if (existingRut.recordset.length > 0) {
-      await pool.close();
-      return NextResponse.json(
-        { error: 'Ya existe un trabajador con este RUT' },
-        { status: 400 }
-      );
-    }
-
-    // Insertar empleado con todos los campos
-    const result = await pool.request()
+    await pool.request()
+      .input('id', sql.Int, parseInt(id))
       // Personal
       .input('codigo_empleado', sql.VarChar, codigoEmpleado || null)
       .input('rut', sql.VarChar, rut)
@@ -138,43 +133,82 @@ export async function POST(request: NextRequest) {
       .input('turno', sql.VarChar, turno || null)
       .input('horario_asistencia', sql.VarChar, horarioAsistencia || null)
       .input('calendario', sql.VarChar, calendario || null)
+      // Estado
+      .input('activo', sql.Bit, activo !== undefined ? activo : true)
       .query(`
-        INSERT INTO empleados (
-          codigo_empleado, rut, nombre, apellido, nacionalidad, fecha_nacimiento,
-          sexo, estado_civil, cantidad_hijos, direccion, comuna, ciudad, telefono, email,
-          contacto_emergencia_nombre, contacto_emergencia_telefono, contacto_emergencia_relacion,
-          fecha_ingreso, fecha_termino, tipo_contrato, jornada, horario, modalidad,
-          departamento, subdepartamento, cargo, centro_costo, supervisor,
-          salario, tipo_sueldo, asignacion_colacion, asignacion_movilizacion,
-          asignacion_zona, asignacion_responsabilidad, bonos, forma_pago, banco, tipo_cuenta, numero_cuenta,
-          afp, salud, plan_isapre, tramo_asignacion_familiar,
-          turno, horario_asistencia, calendario
-        )
-        OUTPUT INSERTED.id
-        VALUES (
-          @codigo_empleado, @rut, @nombre, @apellido, @nacionalidad, @fecha_nacimiento,
-          @sexo, @estado_civil, @cantidad_hijos, @direccion, @comuna, @ciudad, @telefono, @email,
-          @contacto_emergencia_nombre, @contacto_emergencia_telefono, @contacto_emergencia_relacion,
-          @fecha_ingreso, @fecha_termino, @tipo_contrato, @jornada, @horario, @modalidad,
-          @departamento, @subdepartamento, @cargo, @centro_costo, @supervisor,
-          @salario, @tipo_sueldo, @asignacion_colacion, @asignacion_movilizacion,
-          @asignacion_zona, @asignacion_responsabilidad, @bonos, @forma_pago, @banco, @tipo_cuenta, @numero_cuenta,
-          @afp, @salud, @plan_isapre, @tramo_asignacion_familiar,
-          @turno, @horario_asistencia, @calendario
-        )
+        UPDATE empleados SET
+          codigo_empleado = @codigo_empleado, rut = @rut, nombre = @nombre, apellido = @apellido,
+          nacionalidad = @nacionalidad, fecha_nacimiento = @fecha_nacimiento, sexo = @sexo,
+          estado_civil = @estado_civil, cantidad_hijos = @cantidad_hijos, direccion = @direccion,
+          comuna = @comuna, ciudad = @ciudad, telefono = @telefono, email = @email,
+          contacto_emergencia_nombre = @contacto_emergencia_nombre,
+          contacto_emergencia_telefono = @contacto_emergencia_telefono,
+          contacto_emergencia_relacion = @contacto_emergencia_relacion,
+          fecha_ingreso = @fecha_ingreso, fecha_termino = @fecha_termino, tipo_contrato = @tipo_contrato,
+          jornada = @jornada, horario = @horario, modalidad = @modalidad, departamento = @departamento,
+          subdepartamento = @subdepartamento, cargo = @cargo, centro_costo = @centro_costo, supervisor = @supervisor,
+          salario = @salario, tipo_sueldo = @tipo_sueldo, asignacion_colacion = @asignacion_colacion,
+          asignacion_movilizacion = @asignacion_movilizacion, asignacion_zona = @asignacion_zona,
+          asignacion_responsabilidad = @asignacion_responsabilidad, bonos = @bonos, forma_pago = @forma_pago,
+          banco = @banco, tipo_cuenta = @tipo_cuenta, numero_cuenta = @numero_cuenta,
+          afp = @afp, salud = @salud, plan_isapre = @plan_isapre, tramo_asignacion_familiar = @tramo_asignacion_familiar,
+          turno = @turno, horario_asistencia = @horario_asistencia, calendario = @calendario,
+          activo = @activo
+        WHERE id = @id
       `);
     
     await pool.close();
     
     return NextResponse.json({
       success: true,
-      id: result.recordset[0].id,
-      message: 'Trabajador creado exitosamente'
+      message: 'Empleado actualizado exitosamente'
     });
   } catch (error: any) {
-    console.error('Error al crear empleado:', error);
+    console.error('Error al actualizar empleado:', error);
     return NextResponse.json(
-      { error: `Error al crear el trabajador: ${error.message || 'Error desconocido'}` },
+      { error: `Error al actualizar el empleado: ${error.message}` },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Eliminar un empleado
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session');
+    
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const session = JSON.parse(sessionCookie.value);
+    const pool = await getCompanyConnection(session.dbName);
+    
+    // Opción 1: Eliminar físicamente
+    // await pool.request()
+    //   .input('id', sql.Int, parseInt(id))
+    //   .query('DELETE FROM empleados WHERE id = @id');
+    
+    // Opción 2: Desactivar (soft delete) - más seguro
+    await pool.request()
+      .input('id', sql.Int, parseInt(id))
+      .query('UPDATE empleados SET activo = 0 WHERE id = @id');
+    
+    await pool.close();
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Empleado eliminado exitosamente'
+    });
+  } catch (error: any) {
+    console.error('Error al eliminar empleado:', error);
+    return NextResponse.json(
+      { error: `Error al eliminar el empleado: ${error.message}` },
       { status: 500 }
     );
   }

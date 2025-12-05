@@ -2,7 +2,7 @@ const sql = require('mssql');
 
 const config = {
   user: 'sa',
-  password: 'TU_PASSWORD_AQUI', // Cambia esto por tu password
+  password: 'P4ssw0rd00', // Cambia esto por tu password
   server: 'DESKTOP-IEEADGP\\SQLEXPRESS',
   database: 'kymos_master',
   options: {

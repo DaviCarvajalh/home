@@ -96,6 +96,31 @@ export default function TrabajadoresPage() {
 
   const activeFiltersCount = Object.values(filters).filter(v => v !== '').length;
 
+  const handleView = (id: number) => {
+    router.push(`/trabajadores/${id}`);
+  };
+
+  const handleEdit = (id: number) => {
+    router.push(`/trabajadores/${id}/editar`);
+  };
+
+  const handleDelete = async (id: number, nombre: string) => {
+    if (!confirm(`¿Estás seguro de eliminar a ${nombre}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/empleados/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setEmpleados(prev => prev.filter(e => e.id !== id));
+      } else {
+        alert('Error al eliminar el trabajador');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar el trabajador');
+    }
+  };
+
   const toggleSelectAll = () => {
     if (selectedEmpleados.length === paginatedEmpleados.length) {
       setSelectedEmpleados([]);
@@ -125,52 +150,50 @@ export default function TrabajadoresPage() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Búsqueda */}
-            <div className="flex-1 relative">
-              <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nombre, RUT, código o email..."
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              />
-            </div>
+        <div className="p-3 md:p-4 border-b border-gray-100">
+          {/* Búsqueda */}
+          <div className="relative mb-3">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nombre, RUT, código o email..."
+              className="w-full pl-10 pr-4 py-2 md:py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
 
-            {/* Botones */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-2.5 border rounded-lg flex items-center gap-2 transition-colors ${
-                  showFilters || activeFiltersCount > 0
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Filter size={18} />
-                Filtros
-                {activeFiltersCount > 0 && (
-                  <span className="w-5 h-5 bg-emerald-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
+          {/* Botones */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-3 py-2 text-sm border rounded-lg flex items-center gap-1.5 transition-colors ${
+                showFilters || activeFiltersCount > 0
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Filter size={16} />
+              <span className="hidden sm:inline">Filtros</span>
+              {activeFiltersCount > 0 && (
+                <span className="w-4 h-4 bg-emerald-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
 
-              <button className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                <Download size={18} />
-                <span className="hidden sm:inline">Exportar</span>
-              </button>
+            <button className="px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
+              <Download size={16} />
+              <span className="hidden sm:inline">Exportar</span>
+            </button>
 
-              <button
-                onClick={() => router.push('/trabajadores/nuevo')}
-                className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2"
-              >
-                <Plus size={18} />
-                <span className="hidden sm:inline">Nuevo Trabajador</span>
-              </button>
-            </div>
+            <button
+              onClick={() => router.push('/trabajadores/nuevo')}
+              className="px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-1.5 ml-auto"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Nuevo</span>
+            </button>
           </div>
 
           {/* Panel de Filtros */}
@@ -258,22 +281,22 @@ export default function TrabajadoresPage() {
         </div>
 
         {/* Estadísticas rápidas */}
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <Users size={16} className="text-gray-400" />
+        <div className="px-3 md:px-4 py-2 md:py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-3 md:gap-6 text-xs md:text-sm overflow-x-auto">
+          <div className="flex items-center gap-1 md:gap-2 whitespace-nowrap">
+            <Users size={14} className="text-gray-400" />
             <span className="text-gray-600">Total: <strong>{empleados.length}</strong></span>
           </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle size={16} className="text-emerald-500" />
+          <div className="flex items-center gap-1 md:gap-2 whitespace-nowrap">
+            <CheckCircle size={14} className="text-emerald-500" />
             <span className="text-gray-600">Activos: <strong>{empleados.filter(e => e.activo).length}</strong></span>
           </div>
-          <div className="flex items-center gap-2">
-            <XCircle size={16} className="text-red-400" />
+          <div className="flex items-center gap-1 md:gap-2 whitespace-nowrap">
+            <XCircle size={14} className="text-red-400" />
             <span className="text-gray-600">Inactivos: <strong>{empleados.filter(e => !e.activo).length}</strong></span>
           </div>
           {filteredEmpleados.length !== empleados.length && (
-            <div className="flex items-center gap-2 text-emerald-600">
-              <Filter size={16} />
+            <div className="flex items-center gap-1 md:gap-2 text-emerald-600 whitespace-nowrap">
+              <Filter size={14} />
               <span>Mostrando: <strong>{filteredEmpleados.length}</strong></span>
             </div>
           )}
@@ -296,122 +319,169 @@ export default function TrabajadoresPage() {
               )}
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedEmpleados.length === paginatedEmpleados.length && paginatedEmpleados.length > 0}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
-                    />
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trabajador</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">RUT</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Departamento</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cargo</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ingreso</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+            <>
+              {/* Vista móvil - Tarjetas */}
+              <div className="md:hidden divide-y divide-gray-100">
                 {paginatedEmpleados.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedEmpleados.includes(emp.id)}
-                        onChange={() => toggleSelect(emp.id)}
-                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
+                  <div key={emp.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center text-white font-semibold">
                           {emp.nombre?.[0]}{emp.apellido?.[0]}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">{emp.nombre} {emp.apellido}</p>
-                          <p className="text-xs text-gray-500">{emp.email || 'Sin email'}</p>
+                          <p className="font-semibold text-gray-800">{emp.nombre} {emp.apellido}</p>
+                          <p className="text-sm text-gray-500">{emp.rut}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{emp.rut}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-sm text-gray-600">
-                        <Building2 size={14} className="text-gray-400" />
-                        {emp.departamento || '-'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-sm text-gray-600">
-                        <Briefcase size={14} className="text-gray-400" />
-                        {emp.cargo || '-'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(emp.fecha_ingreso)}</td>
-                    <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                        emp.activo 
-                          ? 'bg-emerald-100 text-emerald-700' 
-                          : 'bg-red-100 text-red-700'
+                        emp.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                       }`}>
-                        {emp.activo ? <CheckCircle size={12} /> : <XCircle size={12} />}
                         {emp.activo ? 'Activo' : 'Inactivo'}
                       </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-1">
-                        <button className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Ver ficha">
-                          <Eye size={18} />
-                        </button>
-                        <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
-                          <Edit size={18} />
-                        </button>
-                        <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
-                          <Trash2 size={18} />
-                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Building2 size={14} className="text-gray-400" />
+                        <span>{emp.departamento || '-'}</span>
                       </div>
-                    </td>
-                  </tr>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Briefcase size={14} className="text-gray-400" />
+                        <span>{emp.cargo || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Mail size={14} className="text-gray-400" />
+                        <span className="truncate">{emp.email || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Calendar size={14} className="text-gray-400" />
+                        <span>{formatDate(emp.fecha_ingreso)}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                      <button onClick={() => handleView(emp.id)}
+                        className="px-3 py-1.5 text-sm text-emerald-600 bg-emerald-50 rounded-lg flex items-center gap-1">
+                        <Eye size={16} /> Ver
+                      </button>
+                      <button onClick={() => handleEdit(emp.id)}
+                        className="px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded-lg flex items-center gap-1">
+                        <Edit size={16} /> Editar
+                      </button>
+                      <button onClick={() => handleDelete(emp.id, `${emp.nombre} ${emp.apellido}`)}
+                        className="px-3 py-1.5 text-sm text-red-600 bg-red-50 rounded-lg flex items-center gap-1">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Vista desktop - Tabla */}
+              <table className="w-full hidden md:table">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left">
+                      <input type="checkbox" checked={selectedEmpleados.length === paginatedEmpleados.length && paginatedEmpleados.length > 0}
+                        onChange={toggleSelectAll} className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trabajador</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">RUT</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Departamento</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cargo</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ingreso</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedEmpleados.map((emp) => (
+                    <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={selectedEmpleados.includes(emp.id)} onChange={() => toggleSelect(emp.id)}
+                          className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            {emp.nombre?.[0]}{emp.apellido?.[0]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800">{emp.nombre} {emp.apellido}</p>
+                            <p className="text-xs text-gray-500">{emp.email || 'Sin email'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{emp.rut}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 text-sm text-gray-600">
+                          <Building2 size={14} className="text-gray-400" />{emp.departamento || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 text-sm text-gray-600">
+                          <Briefcase size={14} className="text-gray-400" />{emp.cargo || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{formatDate(emp.fecha_ingreso)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          emp.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {emp.activo ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                          {emp.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleView(emp.id)} className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Ver ficha">
+                            <Eye size={18} />
+                          </button>
+                          <button onClick={() => handleEdit(emp.id)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Editar">
+                            <Edit size={18} />
+                          </button>
+                          <button onClick={() => handleDelete(emp.id, `${emp.nombre} ${emp.apellido}`)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Eliminar">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
 
         {/* Paginación */}
         {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredEmpleados.length)} de {filteredEmpleados.length}
+          <div className="px-3 md:px-4 py-2 md:py-3 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-xs md:text-sm text-gray-600">
+              {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredEmpleados.length)} de {filteredEmpleados.length}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1.5 md:p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={16} />
               </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
                 let pageNum;
-                if (totalPages <= 5) {
+                if (totalPages <= 3) {
                   pageNum = i + 1;
-                } else if (currentPage <= 3) {
+                } else if (currentPage <= 2) {
                   pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
+                } else if (currentPage >= totalPages - 1) {
+                  pageNum = totalPages - 2 + i;
                 } else {
-                  pageNum = currentPage - 2 + i;
+                  pageNum = currentPage - 1 + i;
                 }
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                    className={`w-8 h-8 md:w-10 md:h-10 rounded-lg text-xs md:text-sm font-medium transition-colors ${
                       currentPage === pageNum
                         ? 'bg-emerald-600 text-white'
                         : 'border border-gray-300 hover:bg-gray-50'
@@ -424,9 +494,9 @@ export default function TrabajadoresPage() {
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1.5 md:p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <ChevronRight size={18} />
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>

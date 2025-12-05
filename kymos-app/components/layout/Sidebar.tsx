@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, ChevronLeft, Menu } from 'lucide-react';
-import { menuItems, APP_NAME, APP_VERSION, MenuItem } from '@/config/menu';
+import { ChevronDown, ChevronLeft } from 'lucide-react';
+import { menuItems, APP_NAME, APP_SUBTITLE, APP_DEVELOPER, MenuItem } from '@/config/menu';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface SidebarProps {
   className?: string;
@@ -14,7 +15,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { mobileOpen, setMobileOpen } = useSidebar();
 
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) =>
@@ -68,6 +69,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
                   <li key={subItem.id}>
                     <Link
                       href={subItem.path}
+                      onClick={() => setMobileOpen(false)}
                       className={`
                         block px-4 py-2 rounded-lg text-sm transition-all duration-200
                         ${isActive(subItem.path)
@@ -86,6 +88,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
         ) : (
           <Link
             href={item.path}
+            onClick={() => setMobileOpen(false)}
             className={`
               flex items-center gap-3 px-4 py-3 rounded-lg
               transition-all duration-200 group
@@ -105,18 +108,10 @@ export default function Sidebar({ className = '' }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 rounded-lg text-white shadow-lg"
-      >
-        <Menu size={24} />
-      </button>
-
       {/* Mobile Overlay */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          className="md:hidden fixed inset-0 bg-black/50 z-40"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -124,9 +119,10 @@ export default function Sidebar({ className = '' }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:static inset-y-0 left-0 z-50
+          fixed inset-y-0 left-0 z-50
           ${collapsed ? 'w-20' : 'w-72'}
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0 md:static
           bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900
           border-r border-gray-700/50
           flex flex-col
@@ -143,7 +139,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
               </div>
               <div>
                 <h1 className="text-white font-bold text-lg tracking-tight">{APP_NAME}</h1>
-                <span className="text-emerald-400 text-xs font-medium">{APP_VERSION}</span>
+                <span className="text-emerald-400 text-xs font-medium">{APP_SUBTITLE}</span>
               </div>
             </div>
           )}
@@ -175,7 +171,8 @@ export default function Sidebar({ className = '' }: SidebarProps) {
             {!collapsed && <span className="text-sm">Colapsar menú</span>}
           </button>
         </div>
-      </aside>
+
+              </aside>
     </>
   );
 }
