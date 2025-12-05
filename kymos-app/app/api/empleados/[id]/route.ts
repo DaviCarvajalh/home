@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCompanyConnection, sql } from '@/lib/db';
+import { query } from '@/lib/db-postgres';
 import { cookies } from 'next/headers';
 
 // GET - Obtener un empleado por ID
@@ -17,21 +17,17 @@ export async function GET(
     }
 
     const session = JSON.parse(sessionCookie.value);
-    const pool = await getCompanyConnection(session.dbName);
     
-    const result = await pool.request()
-      .input('id', sql.Int, parseInt(id))
-      .query(`
-        SELECT * FROM empleados WHERE id = @id
-      `);
+    const result = await query(
+      'SELECT * FROM empleados WHERE id = $1 AND empresa_id = $2',
+      [parseInt(id), session.empresaId]
+    );
     
-    await pool.close();
-    
-    if (result.recordset.length === 0) {
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Empleado no encontrado' }, { status: 404 });
     }
     
-    return NextResponse.json({ empleado: result.recordset[0] });
+    return NextResponse.json({ empleado: result.rows[0] });
   } catch (error: any) {
     console.error('Error al obtener empleado:', error);
     return NextResponse.json(
@@ -78,86 +74,77 @@ export async function PUT(
       activo,
     } = body;
 
-    const pool = await getCompanyConnection(session.dbName);
-    
-    await pool.request()
-      .input('id', sql.Int, parseInt(id))
-      // Personal
-      .input('codigo_empleado', sql.VarChar, codigoEmpleado || null)
-      .input('rut', sql.VarChar, rut)
-      .input('nombre', sql.VarChar, nombres)
-      .input('apellido', sql.VarChar, apellidos)
-      .input('nacionalidad', sql.VarChar, nacionalidad || null)
-      .input('fecha_nacimiento', sql.Date, fechaNacimiento || null)
-      .input('sexo', sql.Char(1), sexo || null)
-      .input('estado_civil', sql.VarChar, estadoCivil || null)
-      .input('cantidad_hijos', sql.Int, parseInt(cantidadHijos) || 0)
-      .input('direccion', sql.VarChar, direccion || null)
-      .input('comuna', sql.VarChar, comuna || null)
-      .input('ciudad', sql.VarChar, ciudad || null)
-      .input('telefono', sql.VarChar, telefono || null)
-      .input('email', sql.VarChar, email || null)
-      .input('contacto_emergencia_nombre', sql.VarChar, contactoEmergenciaNombre || null)
-      .input('contacto_emergencia_telefono', sql.VarChar, contactoEmergenciaTelefono || null)
-      .input('contacto_emergencia_relacion', sql.VarChar, contactoEmergenciaRelacion || null)
-      // Laboral
-      .input('fecha_ingreso', sql.Date, fechaIngreso)
-      .input('fecha_termino', sql.Date, fechaTermino || null)
-      .input('tipo_contrato', sql.VarChar, tipoContrato || null)
-      .input('jornada', sql.VarChar, jornada || null)
-      .input('horario', sql.VarChar, horario || null)
-      .input('modalidad', sql.VarChar, modalidad || null)
-      .input('departamento', sql.VarChar, departamento || null)
-      .input('subdepartamento', sql.VarChar, subdepartamento || null)
-      .input('cargo', sql.VarChar, cargo || null)
-      .input('centro_costo', sql.VarChar, centroCosto || null)
-      .input('supervisor', sql.VarChar, supervisor || null)
-      // Renta
-      .input('salario', sql.Decimal(12, 2), sueldoBase ? parseFloat(sueldoBase) : null)
-      .input('tipo_sueldo', sql.VarChar, tipoSueldo || null)
-      .input('asignacion_colacion', sql.Decimal(12, 2), asignacionColacion ? parseFloat(asignacionColacion) : null)
-      .input('asignacion_movilizacion', sql.Decimal(12, 2), asignacionMovilizacion ? parseFloat(asignacionMovilizacion) : null)
-      .input('asignacion_zona', sql.Decimal(12, 2), asignacionZona ? parseFloat(asignacionZona) : null)
-      .input('asignacion_responsabilidad', sql.Decimal(12, 2), asignacionResponsabilidad ? parseFloat(asignacionResponsabilidad) : null)
-      .input('bonos', sql.Decimal(12, 2), bonos ? parseFloat(bonos) : null)
-      .input('forma_pago', sql.VarChar, formaPago || null)
-      .input('banco', sql.VarChar, banco || null)
-      .input('tipo_cuenta', sql.VarChar, tipoCuenta || null)
-      .input('numero_cuenta', sql.VarChar, numeroCuenta || null)
-      // Previsión
-      .input('afp', sql.VarChar, afp || null)
-      .input('salud', sql.VarChar, salud || null)
-      .input('plan_isapre', sql.VarChar, planIsapre || null)
-      .input('tramo_asignacion_familiar', sql.Char(1), tramoAsignacionFamiliar || null)
-      // Asistencia
-      .input('turno', sql.VarChar, turno || null)
-      .input('horario_asistencia', sql.VarChar, horarioAsistencia || null)
-      .input('calendario', sql.VarChar, calendario || null)
-      // Estado
-      .input('activo', sql.Bit, activo !== undefined ? activo : true)
-      .query(`
-        UPDATE empleados SET
-          codigo_empleado = @codigo_empleado, rut = @rut, nombre = @nombre, apellido = @apellido,
-          nacionalidad = @nacionalidad, fecha_nacimiento = @fecha_nacimiento, sexo = @sexo,
-          estado_civil = @estado_civil, cantidad_hijos = @cantidad_hijos, direccion = @direccion,
-          comuna = @comuna, ciudad = @ciudad, telefono = @telefono, email = @email,
-          contacto_emergencia_nombre = @contacto_emergencia_nombre,
-          contacto_emergencia_telefono = @contacto_emergencia_telefono,
-          contacto_emergencia_relacion = @contacto_emergencia_relacion,
-          fecha_ingreso = @fecha_ingreso, fecha_termino = @fecha_termino, tipo_contrato = @tipo_contrato,
-          jornada = @jornada, horario = @horario, modalidad = @modalidad, departamento = @departamento,
-          subdepartamento = @subdepartamento, cargo = @cargo, centro_costo = @centro_costo, supervisor = @supervisor,
-          salario = @salario, tipo_sueldo = @tipo_sueldo, asignacion_colacion = @asignacion_colacion,
-          asignacion_movilizacion = @asignacion_movilizacion, asignacion_zona = @asignacion_zona,
-          asignacion_responsabilidad = @asignacion_responsabilidad, bonos = @bonos, forma_pago = @forma_pago,
-          banco = @banco, tipo_cuenta = @tipo_cuenta, numero_cuenta = @numero_cuenta,
-          afp = @afp, salud = @salud, plan_isapre = @plan_isapre, tramo_asignacion_familiar = @tramo_asignacion_familiar,
-          turno = @turno, horario_asistencia = @horario_asistencia, calendario = @calendario,
-          activo = @activo
-        WHERE id = @id
-      `);
-    
-    await pool.close();
+    await query(
+      `UPDATE empleados SET
+        codigo_empleado = $1, rut = $2, nombre = $3, apellido = $4,
+        nacionalidad = $5, fecha_nacimiento = $6, sexo = $7,
+        estado_civil = $8, cantidad_hijos = $9, direccion = $10,
+        comuna = $11, ciudad = $12, telefono = $13, email = $14,
+        contacto_emergencia_nombre = $15, contacto_emergencia_telefono = $16,
+        contacto_emergencia_relacion = $17,
+        fecha_ingreso = $18, fecha_termino = $19, tipo_contrato = $20,
+        jornada = $21, horario = $22, modalidad = $23, departamento = $24,
+        subdepartamento = $25, cargo = $26, centro_costo = $27, supervisor = $28,
+        salario = $29, tipo_sueldo = $30, asignacion_colacion = $31,
+        asignacion_movilizacion = $32, asignacion_zona = $33,
+        asignacion_responsabilidad = $34, bonos = $35, forma_pago = $36,
+        banco = $37, tipo_cuenta = $38, numero_cuenta = $39,
+        afp = $40, salud = $41, plan_isapre = $42, tramo_asignacion_familiar = $43,
+        turno = $44, horario_asistencia = $45, calendario = $46,
+        activo = $47
+      WHERE id = $48 AND empresa_id = $49`,
+      [
+        codigoEmpleado || null,
+        rut,
+        nombres,
+        apellidos,
+        nacionalidad || null,
+        fechaNacimiento || null,
+        sexo || null,
+        estadoCivil || null,
+        parseInt(cantidadHijos) || 0,
+        direccion || null,
+        comuna || null,
+        ciudad || null,
+        telefono || null,
+        email || null,
+        contactoEmergenciaNombre || null,
+        contactoEmergenciaTelefono || null,
+        contactoEmergenciaRelacion || null,
+        fechaIngreso,
+        fechaTermino || null,
+        tipoContrato || null,
+        jornada || null,
+        horario || null,
+        modalidad || null,
+        departamento || null,
+        subdepartamento || null,
+        cargo || null,
+        centroCosto || null,
+        supervisor || null,
+        sueldoBase ? parseFloat(sueldoBase) : null,
+        tipoSueldo || null,
+        asignacionColacion ? parseFloat(asignacionColacion) : null,
+        asignacionMovilizacion ? parseFloat(asignacionMovilizacion) : null,
+        asignacionZona ? parseFloat(asignacionZona) : null,
+        asignacionResponsabilidad ? parseFloat(asignacionResponsabilidad) : null,
+        bonos ? parseFloat(bonos) : null,
+        formaPago || null,
+        banco || null,
+        tipoCuenta || null,
+        numeroCuenta || null,
+        afp || null,
+        salud || null,
+        planIsapre || null,
+        tramoAsignacionFamiliar || null,
+        turno || null,
+        horarioAsistencia || null,
+        calendario || null,
+        activo !== undefined ? activo : true,
+        parseInt(id),
+        session.empresaId,
+      ]
+    );
     
     return NextResponse.json({
       success: true,
@@ -172,7 +159,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Eliminar un empleado
+// DELETE - Eliminar un empleado (soft delete)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -187,19 +174,12 @@ export async function DELETE(
     }
 
     const session = JSON.parse(sessionCookie.value);
-    const pool = await getCompanyConnection(session.dbName);
     
-    // Opción 1: Eliminar físicamente
-    // await pool.request()
-    //   .input('id', sql.Int, parseInt(id))
-    //   .query('DELETE FROM empleados WHERE id = @id');
-    
-    // Opción 2: Desactivar (soft delete) - más seguro
-    await pool.request()
-      .input('id', sql.Int, parseInt(id))
-      .query('UPDATE empleados SET activo = 0 WHERE id = @id');
-    
-    await pool.close();
+    // Soft delete - desactivar empleado
+    await query(
+      'UPDATE empleados SET activo = false WHERE id = $1 AND empresa_id = $2',
+      [parseInt(id), session.empresaId]
+    );
     
     return NextResponse.json({
       success: true,

@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getCompanyConnection } from '@/lib/db';
+import { query } from '@/lib/db-postgres';
 
 export async function POST(request: Request) {
-  let pool;
-  
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('session');
@@ -34,22 +32,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Conectar a la base de datos de la empresa
-    pool = await getCompanyConnection(session.dbName);
-
     // Verificar contraseña actual
-    const result = await pool.request()
-      .input('userId', session.userId)
-      .query('SELECT id, password_hash FROM usuarios WHERE id = @userId');
+    const result = await query(
+      'SELECT id, password_hash FROM usuarios WHERE id = $1',
+      [session.userId]
+    );
 
-    if (result.recordset.length === 0) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
         { error: 'Usuario no encontrado' },
         { status: 404 }
       );
     }
 
-    const user = result.recordset[0];
+    const user = result.rows[0];
 
     // Comparar contraseña actual (en producción usar bcrypt)
     if (user.password_hash !== currentPassword) {
@@ -60,10 +56,10 @@ export async function POST(request: Request) {
     }
 
     // Actualizar contraseña
-    await pool.request()
-      .input('newPassword', newPassword)
-      .input('userId', session.userId)
-      .query('UPDATE usuarios SET password_hash = @newPassword WHERE id = @userId');
+    await query(
+      'UPDATE usuarios SET password_hash = $1 WHERE id = $2',
+      [newPassword, session.userId]
+    );
 
     return NextResponse.json({
       success: true,
@@ -76,9 +72,5 @@ export async function POST(request: Request) {
       { error: 'Error interno del servidor' },
       { status: 500 }
     );
-  } finally {
-    if (pool) {
-      await pool.close();
-    }
   }
 }

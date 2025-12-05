@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMasterConnection, getCompanyConnection } from '@/lib/db';
+import { query } from '@/lib/db-postgres';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
@@ -13,54 +13,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Conectar a la base de datos maestra
-    const masterPool = await getMasterConnection();
+    // Buscar la empresa (por ahora asumimos Ignisterra)
+    const empresaResult = await query(
+      'SELECT * FROM empresas WHERE db_schema = $1 AND activo = true',
+      ['ignisterra']
+    );
 
-    // Buscar la empresa por el email del usuario
-    // Por ahora, asumimos que el usuario pertenece a Ignisterra
-    const empresaResult = await masterPool.request()
-      .input('dbName', 'ignisterra_db')
-      .query('SELECT * FROM empresas WHERE db_name = @dbName AND activo = 1');
-
-    if (empresaResult.recordset.length === 0) {
-      await masterPool.close();
+    if (empresaResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Empresa no encontrada' },
         { status: 404 }
       );
     }
 
-    const empresa = empresaResult.recordset[0];
-    await masterPool.close();
-
-    // Conectar a la base de datos de la empresa
-    const companyPool = await getCompanyConnection(empresa.db_name);
+    const empresa = empresaResult.rows[0];
 
     // Buscar el usuario
-    const userResult = await companyPool.request()
-      .input('email', usuario)
-      .query('SELECT * FROM usuarios WHERE email = @email AND activo = 1');
+    const userResult = await query(
+      'SELECT * FROM usuarios WHERE email = $1 AND activo = true AND empresa_id = $2',
+      [usuario, empresa.id]
+    );
 
-    if (userResult.recordset.length === 0) {
-      await companyPool.close();
+    if (userResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Usuario no encontrado' },
         { status: 401 }
       );
     }
 
-    const user = userResult.recordset[0];
+    const user = userResult.rows[0];
 
     // Verificar contraseña (por ahora comparación simple, después usar bcrypt)
     if (user.password_hash !== password) {
-      await companyPool.close();
       return NextResponse.json(
         { error: 'Contraseña incorrecta' },
         { status: 401 }
       );
     }
-
-    await companyPool.close();
 
     // Crear sesión (cookie)
     const cookieStore = await cookies();
@@ -70,7 +59,7 @@ export async function POST(request: NextRequest) {
       nombre: user.nombre,
       rol: user.rol,
       empresa: empresa.nombre,
-      dbName: empresa.db_name,
+      empresaId: empresa.id,
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

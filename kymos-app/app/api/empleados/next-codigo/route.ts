@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCompanyConnection } from '@/lib/db';
+import { query } from '@/lib/db-postgres';
 import { cookies } from 'next/headers';
 
 export async function GET() {
@@ -12,18 +12,16 @@ export async function GET() {
     }
 
     const session = JSON.parse(sessionCookie.value);
-    const pool = await getCompanyConnection(session.dbName);
     
     // Obtener el máximo código de empleado actual
-    const result = await pool.request().query(`
-      SELECT ISNULL(MAX(CAST(codigo_empleado AS INT)), 999) as max_codigo
-      FROM empleados
-      WHERE ISNUMERIC(codigo_empleado) = 1
-    `);
+    const result = await query(
+      `SELECT COALESCE(MAX(CAST(codigo_empleado AS INTEGER)), 999) as max_codigo
+       FROM empleados
+       WHERE empresa_id = $1 AND codigo_empleado ~ '^[0-9]+$'`,
+      [session.empresaId]
+    );
     
-    await pool.close();
-    
-    const maxCodigo = result.recordset[0]?.max_codigo || 999;
+    const maxCodigo = result.rows[0]?.max_codigo || 999;
     const nextCodigo = Math.max(maxCodigo + 1, 1000).toString();
     
     return NextResponse.json({ codigo: nextCodigo });

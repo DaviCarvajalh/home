@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCompanyConnection, sql } from '@/lib/db';
+import { query } from '@/lib/db-postgres';
 import { cookies } from 'next/headers';
 
 // GET - Listar empleados
@@ -13,15 +13,13 @@ export async function GET() {
     }
 
     const session = JSON.parse(sessionCookie.value);
-    const pool = await getCompanyConnection(session.dbName);
     
-    const result = await pool.request().query(`
-      SELECT * FROM empleados ORDER BY apellido, nombre
-    `);
+    const result = await query(
+      'SELECT * FROM empleados WHERE empresa_id = $1 ORDER BY apellido, nombre',
+      [session.empresaId]
+    );
     
-    await pool.close();
-    
-    return NextResponse.json({ empleados: result.recordset });
+    return NextResponse.json({ empleados: result.rows });
   } catch (error) {
     console.error('Error al obtener empleados:', error);
     return NextResponse.json(
@@ -70,15 +68,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pool = await getCompanyConnection(session.dbName);
-    
     // Verificar si el RUT ya existe
-    const existingRut = await pool.request()
-      .input('rut', sql.VarChar, rut)
-      .query('SELECT id FROM empleados WHERE rut = @rut');
+    const existingRut = await query(
+      'SELECT id FROM empleados WHERE rut = $1 AND empresa_id = $2',
+      [rut, session.empresaId]
+    );
     
-    if (existingRut.recordset.length > 0) {
-      await pool.close();
+    if (existingRut.rows.length > 0) {
       return NextResponse.json(
         { error: 'Ya existe un trabajador con este RUT' },
         { status: 400 }
@@ -86,89 +82,78 @@ export async function POST(request: NextRequest) {
     }
 
     // Insertar empleado con todos los campos
-    const result = await pool.request()
-      // Personal
-      .input('codigo_empleado', sql.VarChar, codigoEmpleado || null)
-      .input('rut', sql.VarChar, rut)
-      .input('nombre', sql.VarChar, nombres)
-      .input('apellido', sql.VarChar, apellidos)
-      .input('nacionalidad', sql.VarChar, nacionalidad || null)
-      .input('fecha_nacimiento', sql.Date, fechaNacimiento || null)
-      .input('sexo', sql.Char(1), sexo || null)
-      .input('estado_civil', sql.VarChar, estadoCivil || null)
-      .input('cantidad_hijos', sql.Int, parseInt(cantidadHijos) || 0)
-      .input('direccion', sql.VarChar, direccion || null)
-      .input('comuna', sql.VarChar, comuna || null)
-      .input('ciudad', sql.VarChar, ciudad || null)
-      .input('telefono', sql.VarChar, telefono || null)
-      .input('email', sql.VarChar, email || null)
-      .input('contacto_emergencia_nombre', sql.VarChar, contactoEmergenciaNombre || null)
-      .input('contacto_emergencia_telefono', sql.VarChar, contactoEmergenciaTelefono || null)
-      .input('contacto_emergencia_relacion', sql.VarChar, contactoEmergenciaRelacion || null)
-      // Laboral
-      .input('fecha_ingreso', sql.Date, fechaIngreso)
-      .input('fecha_termino', sql.Date, fechaTermino || null)
-      .input('tipo_contrato', sql.VarChar, tipoContrato || null)
-      .input('jornada', sql.VarChar, jornada || null)
-      .input('horario', sql.VarChar, horario || null)
-      .input('modalidad', sql.VarChar, modalidad || null)
-      .input('departamento', sql.VarChar, departamento || null)
-      .input('subdepartamento', sql.VarChar, subdepartamento || null)
-      .input('cargo', sql.VarChar, cargo || null)
-      .input('centro_costo', sql.VarChar, centroCosto || null)
-      .input('supervisor', sql.VarChar, supervisor || null)
-      // Renta
-      .input('salario', sql.Decimal(12, 2), sueldoBase ? parseFloat(sueldoBase) : null)
-      .input('tipo_sueldo', sql.VarChar, tipoSueldo || null)
-      .input('asignacion_colacion', sql.Decimal(12, 2), asignacionColacion ? parseFloat(asignacionColacion) : null)
-      .input('asignacion_movilizacion', sql.Decimal(12, 2), asignacionMovilizacion ? parseFloat(asignacionMovilizacion) : null)
-      .input('asignacion_zona', sql.Decimal(12, 2), asignacionZona ? parseFloat(asignacionZona) : null)
-      .input('asignacion_responsabilidad', sql.Decimal(12, 2), asignacionResponsabilidad ? parseFloat(asignacionResponsabilidad) : null)
-      .input('bonos', sql.Decimal(12, 2), bonos ? parseFloat(bonos) : null)
-      .input('forma_pago', sql.VarChar, formaPago || null)
-      .input('banco', sql.VarChar, banco || null)
-      .input('tipo_cuenta', sql.VarChar, tipoCuenta || null)
-      .input('numero_cuenta', sql.VarChar, numeroCuenta || null)
-      // Previsión
-      .input('afp', sql.VarChar, afp || null)
-      .input('salud', sql.VarChar, salud || null)
-      .input('plan_isapre', sql.VarChar, planIsapre || null)
-      .input('tramo_asignacion_familiar', sql.Char(1), tramoAsignacionFamiliar || null)
-      // Asistencia
-      .input('turno', sql.VarChar, turno || null)
-      .input('horario_asistencia', sql.VarChar, horarioAsistencia || null)
-      .input('calendario', sql.VarChar, calendario || null)
-      .query(`
-        INSERT INTO empleados (
-          codigo_empleado, rut, nombre, apellido, nacionalidad, fecha_nacimiento,
-          sexo, estado_civil, cantidad_hijos, direccion, comuna, ciudad, telefono, email,
-          contacto_emergencia_nombre, contacto_emergencia_telefono, contacto_emergencia_relacion,
-          fecha_ingreso, fecha_termino, tipo_contrato, jornada, horario, modalidad,
-          departamento, subdepartamento, cargo, centro_costo, supervisor,
-          salario, tipo_sueldo, asignacion_colacion, asignacion_movilizacion,
-          asignacion_zona, asignacion_responsabilidad, bonos, forma_pago, banco, tipo_cuenta, numero_cuenta,
-          afp, salud, plan_isapre, tramo_asignacion_familiar,
-          turno, horario_asistencia, calendario
-        )
-        OUTPUT INSERTED.id
-        VALUES (
-          @codigo_empleado, @rut, @nombre, @apellido, @nacionalidad, @fecha_nacimiento,
-          @sexo, @estado_civil, @cantidad_hijos, @direccion, @comuna, @ciudad, @telefono, @email,
-          @contacto_emergencia_nombre, @contacto_emergencia_telefono, @contacto_emergencia_relacion,
-          @fecha_ingreso, @fecha_termino, @tipo_contrato, @jornada, @horario, @modalidad,
-          @departamento, @subdepartamento, @cargo, @centro_costo, @supervisor,
-          @salario, @tipo_sueldo, @asignacion_colacion, @asignacion_movilizacion,
-          @asignacion_zona, @asignacion_responsabilidad, @bonos, @forma_pago, @banco, @tipo_cuenta, @numero_cuenta,
-          @afp, @salud, @plan_isapre, @tramo_asignacion_familiar,
-          @turno, @horario_asistencia, @calendario
-        )
-      `);
-    
-    await pool.close();
+    const result = await query(
+      `INSERT INTO empleados (
+        empresa_id, codigo_empleado, rut, nombre, apellido, nacionalidad, fecha_nacimiento,
+        sexo, estado_civil, cantidad_hijos, direccion, comuna, ciudad, telefono, email,
+        contacto_emergencia_nombre, contacto_emergencia_telefono, contacto_emergencia_relacion,
+        fecha_ingreso, fecha_termino, tipo_contrato, jornada, horario, modalidad,
+        departamento, subdepartamento, cargo, centro_costo, supervisor,
+        salario, tipo_sueldo, asignacion_colacion, asignacion_movilizacion,
+        asignacion_zona, asignacion_responsabilidad, bonos, forma_pago, banco, tipo_cuenta, numero_cuenta,
+        afp, salud, plan_isapre, tramo_asignacion_familiar,
+        turno, horario_asistencia, calendario
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+        $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34,
+        $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47
+      )
+      RETURNING id`,
+      [
+        session.empresaId,
+        codigoEmpleado || null,
+        rut,
+        nombres,
+        apellidos,
+        nacionalidad || null,
+        fechaNacimiento || null,
+        sexo || null,
+        estadoCivil || null,
+        parseInt(cantidadHijos) || 0,
+        direccion || null,
+        comuna || null,
+        ciudad || null,
+        telefono || null,
+        email || null,
+        contactoEmergenciaNombre || null,
+        contactoEmergenciaTelefono || null,
+        contactoEmergenciaRelacion || null,
+        fechaIngreso,
+        fechaTermino || null,
+        tipoContrato || null,
+        jornada || null,
+        horario || null,
+        modalidad || null,
+        departamento || null,
+        subdepartamento || null,
+        cargo || null,
+        centroCosto || null,
+        supervisor || null,
+        sueldoBase ? parseFloat(sueldoBase) : null,
+        tipoSueldo || null,
+        asignacionColacion ? parseFloat(asignacionColacion) : null,
+        asignacionMovilizacion ? parseFloat(asignacionMovilizacion) : null,
+        asignacionZona ? parseFloat(asignacionZona) : null,
+        asignacionResponsabilidad ? parseFloat(asignacionResponsabilidad) : null,
+        bonos ? parseFloat(bonos) : null,
+        formaPago || null,
+        banco || null,
+        tipoCuenta || null,
+        numeroCuenta || null,
+        afp || null,
+        salud || null,
+        planIsapre || null,
+        tramoAsignacionFamiliar || null,
+        turno || null,
+        horarioAsistencia || null,
+        calendario || null,
+      ]
+    );
     
     return NextResponse.json({
       success: true,
-      id: result.recordset[0].id,
+      id: result.rows[0].id,
       message: 'Trabajador creado exitosamente'
     });
   } catch (error: any) {
