@@ -1,23 +1,30 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { query } from '@/lib/db-postgres';
+import { pool } from '@/lib/db';
+
+async function getSession() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('session');
+  if (!sessionCookie) return null;
+  try {
+    return JSON.parse(sessionCookie.value);
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('session');
-    
-    if (!sessionCookie) {
+    const session = await getSession();
+    if (!session?.userId) {
       return NextResponse.json(
         { error: 'No hay sesión activa' },
         { status: 401 }
       );
     }
 
-    const session = JSON.parse(sessionCookie.value);
     const { currentPassword, newPassword } = await request.json();
 
-    // Validar campos
     if (!currentPassword || !newPassword) {
       return NextResponse.json(
         { error: 'Todos los campos son obligatorios' },
@@ -33,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     // Verificar contraseña actual
-    const result = await query(
+    const result = await pool.query(
       'SELECT id, password_hash FROM usuarios WHERE id = $1',
       [session.userId]
     );
@@ -56,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     // Actualizar contraseña
-    await query(
+    await pool.query(
       'UPDATE usuarios SET password_hash = $1 WHERE id = $2',
       [newPassword, session.userId]
     );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db-postgres';
+import { pool } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
@@ -14,8 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar la empresa (por ahora asumimos Ignisterra)
-    const empresaResult = await query(
-      'SELECT * FROM empresas WHERE db_schema = $1 AND activo = true',
+    const empresaResult = await pool.query(
+      'SELECT id, nombre, db_schema FROM empresas WHERE db_schema = $1 AND activo = true',
       ['ignisterra']
     );
 
@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
     const empresa = empresaResult.rows[0];
 
     // Buscar el usuario
-    const userResult = await query(
-      'SELECT * FROM usuarios WHERE email = $1 AND activo = true AND empresa_id = $2',
+    const userResult = await pool.query(
+      'SELECT id, email, nombre, password_hash, rol FROM usuarios WHERE email = $1 AND activo = true AND empresa_id = $2',
       [usuario, empresa.id]
     );
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     const user = userResult.rows[0];
 
-    // Verificar contraseña (por ahora comparación simple, después usar bcrypt)
+    // Verificar contraseña (comparación simple por ahora)
     if (user.password_hash !== password) {
       return NextResponse.json(
         { error: 'Contraseña incorrecta' },
@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
       email: user.email,
       nombre: user.nombre,
       rol: user.rol,
-      empresa: empresa.nombre,
       empresaId: empresa.id,
+      empresa: empresa.nombre,
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

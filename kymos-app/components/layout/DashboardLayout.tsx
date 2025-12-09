@@ -21,9 +21,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {children}
           </main>
           {/* Footer - Developer Credit */}
-          <footer className="px-3 md:px-6 py-2 text-right">
-            <span className="text-[10px] text-gray-400">
-              Desarrollado por <span className="font-semibold">{APP_DEVELOPER}</span>
+          <footer className="px-3 md:px-6 py-3 text-right border-t border-gray-200 bg-white">
+            <span className="text-xs text-gray-500">
+              Creado por <span className="font-semibold text-gray-700">{APP_DEVELOPER}</span>
             </span>
           </footer>
         </div>

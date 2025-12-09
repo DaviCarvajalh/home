@@ -11,6 +11,7 @@ import {
   Upload,
   FileX,
   BarChart3,
+  Calendar,
   LucideIcon,
 } from 'lucide-react';
 
@@ -99,6 +100,13 @@ export const menuItems: MenuItem[] = [
     label: 'Préstamos',
     path: '/prestamos',
     icon: Wallet,
+  },
+  {
+    id: 'periodos',
+    label: 'Períodos',
+    path: '/periodos',
+    icon: Calendar,
+    requiredRole: ['admin', 'rrhh'],
   },
   {
     id: 'liquidaciones',

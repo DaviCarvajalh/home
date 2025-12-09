@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [usuario, setUsuario] = useState('');
@@ -26,7 +27,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        router.push('/dashboard');
+        router.push('/home');
       } else {
         setError(data.error || 'Error al iniciar sesión');
       }
@@ -42,16 +43,14 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <div className="bg-gray-100 rounded-full px-6 py-4">
-            <div className="text-center">
-              <span className="text-2xl font-serif tracking-wide">
-                <span className="text-gray-800">IGNIS</span>
-                <span className="text-red-600">T</span>
-                <span className="text-gray-800">ERRA</span>
-              </span>
-              <div className="text-xs text-gray-500 italic">Lenga fine wood</div>
-            </div>
-          </div>
+          <Image
+            src="/logo-ignisterra.png"
+            alt="Ignisterra - Lenga fine wood"
+            width={200}
+            height={80}
+            priority
+            className="object-contain"
+          />
         </div>
 
         {/* Título */}

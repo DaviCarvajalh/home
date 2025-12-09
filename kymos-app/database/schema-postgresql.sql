@@ -111,15 +111,18 @@ CREATE TABLE IF NOT EXISTS empleados (
 -- ========================================
 CREATE TABLE IF NOT EXISTS vacaciones (
     id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
     empleado_id INTEGER REFERENCES empleados(id) ON DELETE CASCADE,
     fecha_inicio DATE NOT NULL,
     fecha_fin DATE NOT NULL,
     dias_solicitados INTEGER NOT NULL,
-    estado VARCHAR(20) DEFAULT 'pendiente',
+    estado VARCHAR(20) DEFAULT 'pendiente', -- pendiente, aprobada, rechazada
     aprobado_por INTEGER REFERENCES usuarios(id),
     comentario TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_vacaciones_empresa ON vacaciones(empresa_id);
 
 -- ========================================
 -- TABLA: asistencia
@@ -209,3 +212,223 @@ CREATE POLICY "Allow all for now" ON usuarios FOR ALL USING (true);
 CREATE POLICY "Allow all for now" ON vacaciones FOR ALL USING (true);
 CREATE POLICY "Allow all for now" ON asistencia FOR ALL USING (true);
 CREATE POLICY "Allow all for now" ON cargas_familiares FOR ALL USING (true);
+
+-- ========================================
+-- TABLA: liquidaciones
+-- ========================================
+CREATE TABLE IF NOT EXISTS liquidaciones (
+    id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
+    empleado_id INTEGER REFERENCES empleados(id) ON DELETE CASCADE,
+    
+    -- Período
+    periodo_mes INTEGER NOT NULL,
+    periodo_anio INTEGER NOT NULL,
+    fecha_emision DATE DEFAULT CURRENT_DATE,
+    
+    -- Haberes
+    sueldo_base DECIMAL(12,2) DEFAULT 0,
+    gratificacion DECIMAL(12,2) DEFAULT 0,
+    horas_extras DECIMAL(12,2) DEFAULT 0,
+    comisiones DECIMAL(12,2) DEFAULT 0,
+    bonos DECIMAL(12,2) DEFAULT 0,
+    asignacion_colacion DECIMAL(12,2) DEFAULT 0,
+    asignacion_movilizacion DECIMAL(12,2) DEFAULT 0,
+    asignacion_familiar DECIMAL(12,2) DEFAULT 0,
+    otros_haberes DECIMAL(12,2) DEFAULT 0,
+    total_haberes DECIMAL(12,2) DEFAULT 0,
+    
+    -- Descuentos legales
+    afp_monto DECIMAL(12,2) DEFAULT 0,
+    afp_porcentaje DECIMAL(5,2) DEFAULT 0,
+    salud_monto DECIMAL(12,2) DEFAULT 0,
+    salud_porcentaje DECIMAL(5,2) DEFAULT 0,
+    seguro_cesantia DECIMAL(12,2) DEFAULT 0,
+    impuesto_unico DECIMAL(12,2) DEFAULT 0,
+    total_descuentos_legales DECIMAL(12,2) DEFAULT 0,
+    
+    -- Otros descuentos
+    anticipos DECIMAL(12,2) DEFAULT 0,
+    prestamos DECIMAL(12,2) DEFAULT 0,
+    otros_descuentos DECIMAL(12,2) DEFAULT 0,
+    total_otros_descuentos DECIMAL(12,2) DEFAULT 0,
+    
+    -- Totales
+    total_descuentos DECIMAL(12,2) DEFAULT 0,
+    sueldo_liquido DECIMAL(12,2) DEFAULT 0,
+    
+    -- Estado
+    estado VARCHAR(20) DEFAULT 'borrador',
+    
+    -- Metadatos
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Índice único
+    UNIQUE(empleado_id, periodo_mes, periodo_anio)
+);
+
+CREATE INDEX IF NOT EXISTS idx_liquidaciones_empresa ON liquidaciones(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_liquidaciones_empleado ON liquidaciones(empleado_id);
+CREATE INDEX IF NOT EXISTS idx_liquidaciones_periodo ON liquidaciones(periodo_anio, periodo_mes);
+
+CREATE TRIGGER update_liquidaciones_updated_at
+    BEFORE UPDATE ON liquidaciones
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE liquidaciones ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for now" ON liquidaciones FOR ALL USING (true);
+
+-- ========================================
+-- TABLA: contratos
+-- ========================================
+CREATE TABLE IF NOT EXISTS contratos (
+    id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
+    empleado_id INTEGER REFERENCES empleados(id) ON DELETE CASCADE,
+    
+    tipo_contrato VARCHAR(50) NOT NULL, -- indefinido, plazo_fijo, obra_faena, honorarios
+    fecha_inicio DATE NOT NULL,
+    fecha_termino DATE,
+    
+    -- Condiciones
+    jornada VARCHAR(30), -- completa, parcial, articulo_22
+    horas_semanales INTEGER DEFAULT 45,
+    sueldo_base DECIMAL(12,2),
+    
+    -- Documentos
+    documento_url VARCHAR(500),
+    
+    -- Estado
+    estado VARCHAR(20) DEFAULT 'vigente', -- vigente, terminado, por_vencer
+    motivo_termino VARCHAR(100),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_contratos_empresa ON contratos(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_contratos_empleado ON contratos(empleado_id);
+CREATE INDEX IF NOT EXISTS idx_contratos_estado ON contratos(estado);
+
+-- ========================================
+-- TABLA: ausencias
+-- ========================================
+CREATE TABLE IF NOT EXISTS ausencias (
+    id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
+    empleado_id INTEGER REFERENCES empleados(id) ON DELETE CASCADE,
+    
+    tipo VARCHAR(50) NOT NULL, -- licencia_medica, permiso, falta, otro
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    dias INTEGER NOT NULL,
+    
+    motivo TEXT,
+    documento_url VARCHAR(500),
+    
+    estado VARCHAR(20) DEFAULT 'pendiente', -- pendiente, aprobada, rechazada
+    aprobado_por INTEGER REFERENCES usuarios(id),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ausencias_empresa ON ausencias(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_ausencias_empleado ON ausencias(empleado_id);
+
+-- ========================================
+-- TABLA: prestamos
+-- ========================================
+CREATE TABLE IF NOT EXISTS prestamos (
+    id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
+    empleado_id INTEGER REFERENCES empleados(id) ON DELETE CASCADE,
+    
+    monto_total DECIMAL(12,2) NOT NULL,
+    cuotas_totales INTEGER NOT NULL,
+    cuotas_pagadas INTEGER DEFAULT 0,
+    monto_cuota DECIMAL(12,2) NOT NULL,
+    saldo_pendiente DECIMAL(12,2),
+    
+    fecha_inicio DATE NOT NULL,
+    motivo TEXT,
+    
+    estado VARCHAR(20) DEFAULT 'activo', -- activo, pagado, cancelado
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_prestamos_empresa ON prestamos(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_prestamos_empleado ON prestamos(empleado_id);
+
+-- ========================================
+-- TABLA: finiquitos
+-- ========================================
+CREATE TABLE IF NOT EXISTS finiquitos (
+    id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
+    empleado_id INTEGER REFERENCES empleados(id),
+    
+    fecha_termino DATE NOT NULL,
+    causal VARCHAR(100) NOT NULL,
+    
+    -- Montos
+    sueldo_proporcional DECIMAL(12,2) DEFAULT 0,
+    vacaciones_proporcionales DECIMAL(12,2) DEFAULT 0,
+    indemnizacion_anos DECIMAL(12,2) DEFAULT 0,
+    indemnizacion_aviso DECIMAL(12,2) DEFAULT 0,
+    otros_haberes DECIMAL(12,2) DEFAULT 0,
+    total_haberes DECIMAL(12,2) DEFAULT 0,
+    
+    descuentos DECIMAL(12,2) DEFAULT 0,
+    total_liquido DECIMAL(12,2) DEFAULT 0,
+    
+    estado VARCHAR(20) DEFAULT 'borrador', -- borrador, emitido, firmado
+    documento_url VARCHAR(500),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_finiquitos_empresa ON finiquitos(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_finiquitos_empleado ON finiquitos(empleado_id);
+
+-- ========================================
+-- TABLA: sucursales
+-- ========================================
+CREATE TABLE IF NOT EXISTS sucursales (
+    id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
+    
+    nombre VARCHAR(200) NOT NULL,
+    direccion VARCHAR(255),
+    ciudad VARCHAR(100),
+    telefono VARCHAR(20),
+    email VARCHAR(255),
+    
+    activo BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sucursales_empresa ON sucursales(empresa_id);
+
+-- ========================================
+-- TABLA: periodos (gestión de períodos mensuales)
+-- ========================================
+CREATE TABLE IF NOT EXISTS periodos (
+    id SERIAL PRIMARY KEY,
+    empresa_id INTEGER REFERENCES empresas(id),
+    mes INTEGER NOT NULL CHECK (mes >= 1 AND mes <= 12),
+    anio INTEGER NOT NULL CHECK (anio >= 2020 AND anio <= 2100),
+    estado VARCHAR(20) DEFAULT 'abierto' CHECK (estado IN ('abierto', 'cerrado')),
+    fecha_apertura TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_cierre TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(empresa_id, mes, anio)
+);
+
+CREATE INDEX IF NOT EXISTS idx_periodos_empresa ON periodos(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_periodos_estado ON periodos(empresa_id, estado);

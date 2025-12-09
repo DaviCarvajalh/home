@@ -1,15 +1,26 @@
-import sql from 'mssql/msnodesqlv8';
+import { Pool } from 'pg';
 
-const server = process.env.DB_SERVER || 'DESKTOP-IEEADGP\\SQLEXPRESS';
+// Conexión a PostgreSQL
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:admin123@localhost:5432/kymos';
 
-export async function getMasterConnection(): Promise<sql.ConnectionPool> {
-  const connectionString = 'Driver={ODBC Driver 17 for SQL Server};Server=' + server + ';Database=kymos_master;Trusted_Connection=yes;';
-  return await sql.connect({ connectionString });
+export const pool = new Pool({
+  connectionString,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+// Función helper para queries
+export async function query(text: string, params?: unknown[]) {
+  const start = Date.now();
+  const res = await pool.query(text, params);
+  const duration = Date.now() - start;
+  console.log('Query ejecutada', { text: text.substring(0, 50), duration, rows: res.rowCount });
+  return res;
 }
 
-export async function getCompanyConnection(dbName: string): Promise<sql.ConnectionPool> {
-  const connectionString = 'Driver={ODBC Driver 17 for SQL Server};Server=' + server + ';Database=' + dbName + ';Trusted_Connection=yes;';
-  return await sql.connect({ connectionString });
+// Función para obtener un cliente del pool (para transacciones)
+export async function getClient() {
+  const client = await pool.connect();
+  return client;
 }
-
-export { sql };

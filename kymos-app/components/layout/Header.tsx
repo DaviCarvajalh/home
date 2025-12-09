@@ -25,6 +25,30 @@ import {
 } from 'lucide-react';
 import { useSidebar } from '@/contexts/SidebarContext';
 
+// Componente para mostrar fecha y hora actual
+function CurrentDateTime() {
+  const [dateTime, setDateTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setDateTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <span className="text-sm text-gray-600">
+      {dateTime.toLocaleDateString('es-CL', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: '2-digit' 
+      })}, {dateTime.toLocaleTimeString('es-CL', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      })}
+    </span>
+  );
+}
+
 interface UserData {
   nombre: string;
   email: string;
@@ -190,8 +214,15 @@ export default function Header({ className = '' }: HeaderProps) {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
-    <header className={`bg-white border-b border-gray-200 px-3 md:px-6 py-2 md:py-3 ${className}`}>
-      <div className="flex items-center justify-between">
+    <header className={`bg-white border-b border-gray-200 ${className}`}>
+      {/* Barra superior con título y fecha */}
+      <div className="flex items-center justify-between px-3 md:px-6 py-2 border-b border-gray-100 bg-gray-50">
+        <span className="text-sm font-semibold text-gray-700">KyMOS - Sistema de Gestión de RRHH</span>
+        <CurrentDateTime />
+      </div>
+      
+      {/* Barra de filtros */}
+      <div className="flex items-center justify-between px-3 md:px-6 py-2 md:py-3">
         {/* Left Section - Filters */}
         <div className="flex items-center gap-2 md:gap-6">
           {/* Mobile Menu Button */}
