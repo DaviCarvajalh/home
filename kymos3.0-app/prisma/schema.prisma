@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────
+// DOMAIN: sec_ (Security)
+// ──────────────────────────────────────────
+
+model SecRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users SecUser[]
+
+  @@map("sec_role")
+}
+
+model SecUser {
+  id           String    @id @default(cuid())
+  name         String
+  lastname     String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  roleId       String    @map("role_id")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  createdBy    String?   @map("created_by")
+  updatedBy    String?   @map("updated_by")
+
+  role SecRole @relation(fields: [roleId], references: [id])
+
+  @@index([email], map: "idx_sec_user_email")
+  @@index([roleId], map: "idx_sec_user_role_id")
+  @@map("sec_user")
+}
